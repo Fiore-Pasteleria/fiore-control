@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Subir los precios al sistema</title>
+<style>
+:root{--bg:#DDE3D2;--pan:#E8EDE0;--bor:#C3CBB4;--txt:#2E3524;--dim:#6B7360;
+      --gold:#7E5F33;--vino:#7B2E42;--ok:#4A7C59;--warn:#B8860B;--mora:#6B3FA0}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--txt);font:14px/1.55 "Segoe UI",system-ui,-apple-system,Roboto,sans-serif;padding:20px}
+.wrap{max-width:1060px;margin:0 auto}
+h1{font:700 27px Georgia,serif}
+h1 small{display:block;font:400 12.5px/1.5 inherit;color:var(--dim);letter-spacing:1.5px;text-transform:uppercase;margin-top:4px}
+.card{background:var(--pan);border:1px solid var(--bor);border-radius:12px;margin:14px 0;overflow:hidden}
+.ch{padding:12px 16px;border-bottom:1px solid var(--bor);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.ch h3{font:700 16px Georgia,serif}
+.cb{padding:14px 16px}
+.btn{padding:9px 18px;border:1px solid var(--bor);background:var(--pan);border-radius:8px;
+     cursor:pointer;font:600 13px inherit;color:var(--txt)}
+.btn.p{background:var(--gold);color:#F3EFE6;border-color:var(--gold)}
+.btn.go{background:var(--ok);color:#fff;border-color:var(--ok)}
+.btn:disabled{opacity:.4;cursor:default}
+.paso{font:700 11px inherit;letter-spacing:1px;text-transform:uppercase;color:var(--dim)}
+table{width:100%;border-collapse:collapse}
+th,td{border-bottom:1px solid var(--bor);padding:6px 8px;text-align:right;font-size:12.5px}
+th:first-child,td:first-child,th:nth-child(2),td:nth-child(2){text-align:left}
+th{font:700 10.5px inherit;text-transform:uppercase;color:var(--dim);letter-spacing:.5px}
+tr.ya td{color:var(--dim)}
+tr.nue td{background:rgba(74,124,89,.10)}
+tr.ojo td{background:rgba(184,134,11,.13)}
+.pil{display:inline-block;border-radius:4px;padding:0 5px;font-size:10px;font-weight:700;margin-left:5px}
+.pil.n{background:rgba(74,124,89,.18);color:var(--ok)}
+.pil.o{background:rgba(184,134,11,.2);color:var(--warn)}
+.est{padding:11px 15px;border-radius:9px;margin:10px 0;font-size:13px;line-height:1.65}
+.est.ok{background:rgba(74,124,89,.14);border:1px solid rgba(74,124,89,.45)}
+.est.mal{background:rgba(123,46,66,.12);border:1px solid rgba(123,46,66,.45);color:var(--vino)}
+.est.av{background:rgba(184,134,11,.12);border:1px solid rgba(184,134,11,.45)}
+.av{background:rgba(184,134,11,.12);border:1px solid rgba(184,134,11,.4);border-radius:10px;
+    padding:12px 15px;margin:14px 0;font-size:13px;line-height:1.7}
+.av b{color:var(--warn)}
+.log{font:12px ui-monospace,Menlo,Consolas,monospace;background:rgba(0,0,0,.05);
+     border-radius:8px;padding:10px 12px;margin-top:10px;max-height:240px;overflow:auto;white-space:pre-wrap}
+</style></head><body>
+<div class="wrap">
+<h1>Subir los precios<small>Fiore Gelato · lo que matriz le cobra a los locales</small></h1>
+
+<div class="av">
+<b>Nada se sube hasta que usted apriete.</b> El paso 1 compara con lo que ya hay en el sistema.
+Lo que ya esté cargado con el mismo precio se salta.<br><br>
+<b>Todo esto se puede cambiar después</b> desde el sistema: el precio en la pantalla de Precios,
+el nombre y las juntas en la pantalla de Nombres, y la unidad en Insumos.
+Esto es solo para no escribir 59 renglones a mano.
+</div>
+
+<div class="card">
+  <div class="ch"><span class="paso">Paso 1</span><h3>Ver qué hay ya en el sistema</h3>
+    <button class="btn p" style="margin-left:auto" id="b1" onclick="comprobar()">🔎 Comprobar</button></div>
+  <div class="cb" id="r1"><span style="color:var(--dim)">Apriete Comprobar.</span></div>
+</div>
+
+<div class="card" id="c2" style="display:none">
+  <div class="ch"><span class="paso">Paso 2</span><h3>Subir</h3>
+    <button class="btn go" style="margin-left:auto" id="b2" onclick="subir()">⬆ Subir los precios</button></div>
+  <div class="cb" id="r2"></div>
+</div>
+
+<div class="card">
+  <div class="ch"><h3>Los 59 precios</h3><span id="resu" style="margin-left:auto;font-size:12px;color:var(--dim)"></span></div>
+  <div class="cb" style="overflow-x:auto" id="tabla"></div>
+</div>
+</div>
+
+<script>
+var SUPA='https://hczqujcwpjbqcomnhewc.supabase.co';
+var KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjenF1amN3cGpicWNvbW5oZXdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEzMTkxODQsImV4cCI6MjEwNjg5NTE4NH0.fvMtZqLz6Zu370oWDFBmstZNY669HBqRlvxtu-JKRLg';
+try{ var c=JSON.parse(localStorage.getItem('fiore_supa_cfg')||'null');
+     if(c&&c.url&&c.key){ SUPA=c.url; KEY=c.key; } }catch(e){}
+var H={'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/json'};
+
+// nombre de la hoja de bodega · precio · unidad en la que se despacha · nota
+var P=[
+['Azucar sobres para llevar',1.56,'paq','nuevo en la hoja'],
+['Cubierto blanco solo',0.89,'paq','nuevo en la hoja'],
+['Cubiertos trinche y cuchillo',0.13,'paq',''],
+['Cuchara helado grande',10,'paq',''],
+['Cuchara de porcion',0.28,'paq',''],
+['Envase empanada',1.06,'paq','nuevo en la hoja'],
+['Envase medio brazo base',0.315,'und','los $0,63 partidos mitad y mitad'],
+['Envase medio brazo tapa',0.315,'und','los $0,63 partidos mitad y mitad'],
+['Envase porcion',0.84,'paq','nuevo en la hoja'],
+['Envase waffle',1.6,'paq','nuevo en la hoja'],
+['Funda negra 23x28',0.36,'paq','la hoja dice solo "Funda negra": hay que abrirla en dos'],
+['Funda blanca',1.25,'paq',''],
+['Funda negra 30x36',0.68,'paq','la hoja dice solo "Funda negra": hay que abrirla en dos'],
+['Funda papel tostadas',1.8,'paq','nuevo en la hoja'],
+['Funda verde',0.95,'paq','nuevo en la hoja'],
+['Jamon grande',3.43,'paq',''],
+['Servilletas',0.4,'paq',''],
+['Funda sorbete grande',2.3,'paq',''],
+['Sorbetes negros pequeños',1.08,'paq',''],
+['Vela espiga',0.63,'paq','nuevo en la hoja'],
+['Barquillos',0.35,'funda',''],
+['Cafe',20.18,'funda',''],
+['Rollo impresora termica',1.5,'rollo',''],
+['Rollo funda pequena',1.84,'rollo','nuevo en la hoja'],
+['Crema',17,'galon','FALTA saber cuantos litros tiene un galon de ustedes'],
+['Esencia de vainilla',1.8,'bote','FALTA saber que cantidad lleva el bote'],
+['Esencia de arandano',1.82,'bote','FALTA saber que cantidad lleva el bote'],
+['Notas de pedido',3.8,'block',''],
+['Mermelada de chocolate',1.5,'lbs',''],
+['Mermelada de mora',1.5,'lbs',''],
+['Mermelada de mora con pepa',1.5,'lbs','PREGUNTAR: no vino en la lista, se le puso el precio de la de mora'],
+['Azucar impalpable',0.5,'lbs','OJO: el saco de 25 kg a $55,18 da $1,10 la libra de costo'],
+['Chocolate para escribir',2.72,'lbs',''],
+['Lady / decoracion',1.5,'lbs',''],
+['Agua en botella',0.35,'und',''],
+['Axion',2.8,'und',''],
+['Caja torta de 10',0.31,'und',''],
+['Caja torta de 20',0.39,'und',''],
+['Conos',0.06,'und',''],
+['Vaso litro',0.35,'und',''],
+['Vaso medio litro',0.32,'und',''],
+['Funda medio brazo',0.17,'und',''],
+['Huevos',0.12,'und','nuevo en la hoja'],
+['Duraznos en lata',2.25,'und',''],
+['Leche',0.75,'und',''],
+['Logo fiore plancha',0.42,'und','nuevo en la hoja'],
+['Pilas cremera',0.71,'und',''],
+['Portaconos',0.02,'und',''],
+['Queso para tostada',0.14,'und',''],
+['Tulipanes',0.08,'und',''],
+['Vaso capuchino caliente',0.21,'und','el precio ya incluye la tapa'],
+['Vaso carton pequeno',0.04,'und','PREGUNTAR QUE ES: entra con nombre propio, sin juntarse con otro vaso'],
+['Vaso de helado',0.09,'und',''],
+['Vaso de queso',0.04,'und',''],
+['Vaso milkshake y tapa',0.13,'und','nuevo en la hoja'],
+['Vaso latte helado',0.07,'und','los $0,14 partidos mitad y mitad: confirmar con matriz'],
+['Tapa latte helado',0.07,'und','los $0,14 partidos mitad y mitad: confirmar con matriz'],
+['Vela explosiva',0.4,'und',''],
+['Vela de numero',0.22,'und','']
+].map(function(x){ return {nom:x[0], pre:x[1], uni:x[2], nota:x[3], ya:null, fich:null}; });
+
+// la misma clave que usa el sistema, para no crear repetidos
+function kH(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')
+  .replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim(); }
+function singu(x){ if(!x||x.length<=3) return x;
+  if(/s$/.test(x)) x=x.slice(0,-1);
+  if(x.length>3 && /e$/.test(x)) x=x.slice(0,-1);
+  return x; }
+var VACIAS=/^(de|del|la|el|los|las|con|y|en|para)$/;
+function clave(n){ return kH(n).split(' ').filter(function(x){ return x && !VACIAS.test(x); })
+  .map(singu).sort().join(' '); }
+function $(id){ return document.getElementById(id); }
+function leer(r){ return r.ok? r.json() : r.text().then(function(t){ throw new Error(t.slice(0,220)); }); }
+function log(t){ $('r2').innerHTML += '<div class="log">'+t+'</div>'; }
+
+function pintarTabla(){
+  var h='<table><thead><tr><th>Nombre en la hoja de bodega</th><th>Se cobra</th><th>Por</th>'+
+        '<th>En el sistema</th><th style="text-align:left">Nota</th></tr></thead><tbody>';
+  P.forEach(function(x){
+    var cls = x.ya===true?'ya' : (/OJO|PREGUNTAR|FALTA/.test(x.nota)?'ojo' : (/nuevo/.test(x.nota)?'nue':''));
+    h+='<tr class="'+cls+'"><td>'+x.nom+
+       (/nuevo/.test(x.nota)?'<span class="pil n">nuevo</span>':'')+
+       (/OJO|PREGUNTAR|FALTA/.test(x.nota)?'<span class="pil o">revisar</span>':'')+'</td>'+
+       '<td style="color:var(--gold);font-weight:700">$'+x.pre.toFixed(2)+'</td>'+
+       '<td>'+x.uni+'</td>'+
+       '<td>'+(x.ya===true? '<span style="color:var(--ok)">✓ igual</span>' :
+               x.ya==='dist'? '<span style="color:var(--warn)">tiene otro precio</span>' :
+               x.ya===false? '<span style="color:var(--dim)">falta</span>' : '—')+'</td>'+
+       '<td style="text-align:left;font-size:11px;color:var(--dim)">'+(x.nota||'')+'</td></tr>';
+  });
+  $('tabla').innerHTML=h+'</tbody></table>';
+  $('resu').textContent = P.filter(function(x){return /OJO|PREGUNTAR|FALTA/.test(x.nota);}).length+' por revisar · '+
+                          P.filter(function(x){return /nuevo/.test(x.nota);}).length+' nuevos en la hoja';
+}
+
+var PRE_SIS=[], INS_SIS=[];
+function comprobar(){
+  $('b1').disabled=true; $('r1').innerHTML='<span style="color:var(--dim)">Consultando…</span>';
+  Promise.all([
+    fetch(SUPA+'/rest/v1/precios?select=id,producto,precio',{headers:H}).then(leer),
+    fetch(SUPA+'/rest/v1/insumos?select=id,clave,producto,unidad',{headers:H}).then(leer)
+  ]).then(function(r){
+    PRE_SIS=r[0]; INS_SIS=r[1];
+    var ya=0, dist=0, falta=0, fichas=0;
+    P.forEach(function(x){
+      var k=clave(x.nom);
+      var p=PRE_SIS.filter(function(d){ return clave(d.producto)===k; })[0];
+      if(!p){ x.ya=false; falta++; }
+      else if(Math.abs(Number(p.precio||0)-x.pre)<0.001){ x.ya=true; ya++; x.pid=p.id; }
+      else { x.ya='dist'; dist++; x.pid=p.id; x.preViejo=Number(p.precio||0); }
+      var f=INS_SIS.filter(function(d){ return clave(d.producto||d.clave)===k; })[0];
+      x.fich = f||null; if(f) fichas++;
+    });
+    $('r1').innerHTML =
+      '<div class="est ok">El sistema tiene <b>'+PRE_SIS.length+' precios</b> y <b>'+INS_SIS.length+' fichas de insumo</b>.</div>'+
+      '<div class="est '+(falta||dist?'av':'ok')+'">De estos 59: <b>'+ya+' ya están con el mismo precio</b>, '+
+      '<b>'+dist+' tienen otro precio</b> y <b>'+falta+' faltan</b>.'+
+      (dist? ' Los que tienen otro precio se van a cambiar al de esta lista.' : '')+'</div>'+
+      '<div class="est ok">Ficha de insumo: <b>'+fichas+'</b> de 59 ya existen. A las que ya existen '+
+      '<b>no se les toca la unidad</b>, para no descuadrar el stock que ya tengan.</div>';
+    pintarTabla();
+    $('c2').style.display=''; $('b2').disabled = (falta===0 && dist===0);
+    $('b1').disabled=false;
+  }).catch(function(e){
+    $('r1').innerHTML='<div class="est mal"><b>No se pudo consultar.</b><br>'+e.message+'</div>';
+    $('b1').disabled=false;
+  });
+}
+
+function subir(){
+  var lista=P.filter(function(x){ return x.ya!==true; });
+  if(!lista.length){ alert('No hay nada que subir.'); return; }
+  var nuevos=lista.filter(function(x){ return x.ya===false; }).length;
+  var cambian=lista.filter(function(x){ return x.ya==='dist'; });
+  var txt='Se van a subir '+lista.length+' precios.\n\n'+nuevos+' nuevos';
+  if(cambian.length){
+    txt+='\n'+cambian.length+' CAMBIAN de precio:\n';
+    cambian.slice(0,8).forEach(function(x){ txt+='   '+x.nom+':  $'+x.preViejo.toFixed(2)+'  ->  $'+x.pre.toFixed(2)+'\n'; });
+    if(cambian.length>8) txt+='   ... y '+(cambian.length-8)+' mas\n';
+  }
+  txt+='\nTambien se crean las fichas de insumo que falten, con su unidad.\nA las fichas que ya existen no se les toca nada.\n\n¿Subir?';
+  if(!confirm(txt)) return;
+
+  $('b2').disabled=true; $('r2').innerHTML='';
+  var ok=0, mal=0, i=0;
+  (function paso(){
+    if(i>=lista.length){
+      $('r2').innerHTML='<div class="est '+(mal?'av':'ok')+'"><b>Listo.</b> Subidos: '+ok+
+        (mal?' · Con error: '+mal:'')+'.<br>Abra el sistema, vaya a <b>Precios</b> y revise.</div>'+$('r2').innerHTML;
+      $('b2').disabled=false; comprobar(); return;
+    }
+    var x=lista[i];
+    var pPre = x.pid
+      ? fetch(SUPA+'/rest/v1/precios?id=eq.'+x.pid,{method:'PATCH',headers:H,body:JSON.stringify({precio:x.pre})})
+      : fetch(SUPA+'/rest/v1/precios',{method:'POST',headers:H,body:JSON.stringify({producto:x.nom,precio:x.pre})});
+    var pFic = x.fich ? Promise.resolve()
+      : fetch(SUPA+'/rest/v1/insumos',{method:'POST',headers:H,
+          body:JSON.stringify({clave:clave(x.nom),producto:x.nom,unidad:x.uni,
+                               unidad_paq:x.uni,por_paquete:1,costo_base:0})});
+    Promise.all([pPre.then(function(r){ if(!r.ok) return r.text().then(function(t){throw new Error(t.slice(0,160));}); }),
+                 pFic.then(function(r){ if(r && !r.ok) return r.text().then(function(t){throw new Error(t.slice(0,160));}); })])
+     .then(function(){ ok++; log('✓  '+x.nom+'   $'+x.pre.toFixed(2)+'   por '+x.uni+(x.fich?'':'   + ficha nueva')); })
+     .catch(function(e){ mal++; log('✕  '+x.nom+'   '+e.message); })
+     .then(function(){ i++; paso(); });
+  })();
+}
+
+pintarTabla();
+</script></body></html>
